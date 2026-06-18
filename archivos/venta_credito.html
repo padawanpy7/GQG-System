@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GQG System — Prototipo venta a crédito</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --ink:#182232; --ink2:#2d3748; --slate:#505f76;
+    --line:#c5c6cd; --bg:#fbf8fa; --surf:#f0edef; --white:#fff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter',sans-serif; font-feature-settings:'tnum' 1;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1100px; margin:0 auto; padding:24px;}
+  input,select,button{font-family:inherit;}
+  input,select{
+    width:100%; height:40px; border:1px solid var(--line); border-radius:4px;
+    background:transparent; padding:0 12px; font-size:14px; color:var(--ink); outline:none;
+  }
+  input:focus,select:focus{border-color:var(--ink);}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .label{display:block; font-size:11px; letter-spacing:.05em; font-weight:600; color:var(--slate); margin-bottom:6px;}
+  .card{background:var(--white); border:1px solid var(--line); border-radius:6px;}
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding-bottom:13px; border-bottom:1px solid var(--line); margin-bottom:24px;}
+  .cols{display:grid; grid-template-columns:1.1fr 1fr; gap:18px; align-items:start;}
+  @media(max-width:760px){.cols{grid-template-columns:1fr;} .ctx{grid-template-columns:1fr !important;}}
+  .seg{display:inline-flex; background:var(--surf); border-radius:4px; padding:3px; margin-bottom:16px;}
+  .seg button{border:none; background:transparent; padding:6px 22px; font-size:11px; letter-spacing:.05em; font-weight:600; color:var(--slate); border-radius:3px; cursor:pointer;}
+  .seg button.on{border:1px solid var(--line); background:var(--white); font-weight:700; color:var(--ink);}
+  .row{display:grid; grid-template-columns:auto 1fr auto; gap:0 14px; align-items:center;}
+  .thead{background:var(--surf); padding:9px 16px; font-size:11px; letter-spacing:.05em; font-weight:600; color:var(--slate);}
+  .crow{padding:11px 0; border-bottom:1px solid var(--line); opacity:0; transform:translateY(3px); transition:opacity .22s ease, transform .22s ease;}
+  .crow.show{opacity:1; transform:translateY(0);}
+  .btn-primary{height:40px; padding:0 20px; border:none; background:var(--ink); color:#fff; border-radius:4px; font-size:11px; letter-spacing:.05em; font-weight:700; cursor:pointer;}
+  .btn-ghost{height:40px; padding:0 20px; border:1px solid var(--line); background:transparent; border-radius:4px; font-size:11px; letter-spacing:.05em; font-weight:600; color:var(--ink); cursor:pointer;}
+  .badge{font-size:10px; letter-spacing:.05em; font-weight:600; padding:3px 10px; border-radius:999px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <span style="font-weight:600; font-size:18px; letter-spacing:-.01em;">GQG System</span>
+      <span style="width:1px; height:18px; background:var(--line);"></span>
+      <span style="color:var(--slate); font-size:15px;">Nueva venta a crédito</span>
+    </div>
+    <span style="font-size:12px; color:var(--slate);">Operador</span>
+  </div>
+
+  <div class="cols">
+
+    <div class="card" style="padding:18px 20px;">
+      <div style="font-weight:600; font-size:16px; margin-bottom:18px;">Datos de la venta</div>
+
+      <label class="label">CLIENTE</label>
+      <input id="cliente" type="text" value="Gregorio Quintana González" style="margin-bottom:16px;"/>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px;">
+        <div>
+          <label class="label">FECHA FACTURA</label>
+          <input id="fecha" type="date" value="2024-06-18"/>
+        </div>
+        <div>
+          <label class="label" style="text-align:right;">TOTAL (Gs)</label>
+          <input id="total" class="mono" type="number" value="584226" step="1" style="text-align:right;"/>
+        </div>
+      </div>
+
+      <label class="label">MODALIDAD</label>
+      <div class="seg">
+        <button id="btn-co" type="button">CONTADO</button>
+        <button id="btn-cr" type="button" class="on">CRÉDITO</button>
+      </div>
+
+      <div id="plazo-wrap">
+        <label class="label">PLAZO</label>
+        <select id="plazo">
+          <option value="2">CR-30/60/90 días — regular — 3 cuotas</option>
+          <option value="3" selected>CR-30/45/60 días — irregular — 3 cuotas</option>
+          <option value="4">CR-30/60/90/120 días — regular — 4 cuotas</option>
+        </select>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; padding-top:16px; border-top:1px solid var(--line);">
+        <button type="button" class="btn-ghost">DESCARTAR</button>
+        <button type="button" class="btn-primary">GENERAR CUOTAS</button>
+      </div>
+    </div>
+
+    <div class="card" style="overflow:hidden;">
+      <div style="padding:16px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between;">
+        <span style="font-weight:600; font-size:16px;">Cuentas a cobrar</span>
+        <span id="badge" class="badge" style="background:#d0e1fb; color:#38485d;">CRÉDITO</span>
+      </div>
+      <div class="row thead"><span>CUOTA</span><span style="text-align:right;">IMPORTE</span><span style="text-align:right;">VENCE</span></div>
+      <div id="cuotas" style="padding:0 16px;"></div>
+      <div class="row" style="background:var(--bg); padding:13px 16px; border-top:1px solid var(--line);">
+        <span style="font-weight:700; font-size:14px;">Total</span>
+        <span id="suma" class="mono" style="text-align:right; font-weight:700; font-size:14px;">—</span>
+        <span></span>
+      </div>
+      <p id="cuadre" style="font-size:11px; margin:0; padding:10px 16px; text-align:center; font-style:italic;"></p>
+    </div>
+  </div>
+
+  <div class="ctx" style="display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:18px;">
+    <!-- NOTA: estas tres tarjetas son decorativas. La gestión de límite de crédito,
+         historial de pagos y aprobación NO está en el alcance del TP. Quitar en la versión final. -->
+    <div class="card" style="background:var(--bg); padding:16px 18px;">
+      <span class="label">LÍMITE DE CRÉDITO</span>
+      <div class="mono" style="font-size:16px; font-weight:600; margin-top:4px;">5.000.000 Gs</div>
+      <div style="margin-top:8px; height:4px; background:var(--line); border-radius:999px; overflow:hidden;"><div style="background:var(--ink); height:100%; width:12%;"></div></div>
+      <p style="margin:8px 0 0; font-size:12px; color:var(--slate);">11,7% utilizado con esta venta.</p>
+    </div>
+    <div class="card" style="background:var(--bg); padding:16px 18px;">
+      <span class="label">ÚLTIMO PAGO</span>
+      <div class="mono" style="font-size:16px; font-weight:600; margin-top:4px;">12/05/2024</div>
+      <p style="margin:8px 0 0; font-size:12px; color:var(--slate);">Pago de 820.000 Gs recibido en fecha.</p>
+    </div>
+    <div class="card" style="background:var(--bg); padding:16px 18px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+      <span class="label">ESTADO DE CRÉDITO</span>
+      <div class="badge" style="margin-top:7px; background:#c0dd97; color:#27500a;">APROBADO</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var esCredito=true;
+  var detalles={3:[30,45,60]};
+  var regulares={2:[3,30],4:[4,30]};
+  function fmt(n){ return Math.round(n).toLocaleString('es-PY'); }
+  function addDays(iso,d){ var x=new Date(iso+'T00:00:00'); x.setDate(x.getDate()+d); return x.toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+
+  function calc(){
+    var total=parseFloat(document.getElementById('total').value)||0;
+    var fecha=document.getElementById('fecha').value;
+    var plazo=document.getElementById('plazo').value;
+    var cont=document.getElementById('cuotas'); cont.innerHTML='';
+    var rows=[];
+    if(!esCredito){ rows.push({c:'01/01',imp:total,ven:addDays(fecha,0)}); }
+    else if(detalles[plazo]){ var d=detalles[plazo],n=d.length,b=Math.trunc(total/n),u=total-b*(n-1);
+      for(var i=0;i<n;i++) rows.push({c:('0'+(i+1)).slice(-2)+'/'+('0'+n).slice(-2),imp:(i<n-1?b:u),ven:addDays(fecha,d[i])}); }
+    else { var n=regulares[plazo][0],st=regulares[plazo][1],b=Math.trunc(total/n),u=total-b*(n-1);
+      for(var i=0;i<n;i++) rows.push({c:('0'+(i+1)).slice(-2)+'/'+('0'+n).slice(-2),imp:(i<n-1?b:u),ven:addDays(fecha,(i+1)*st)}); }
+    var suma=0;
+    rows.forEach(function(r,idx){
+      suma+=r.imp;
+      var row=document.createElement('div');
+      row.className='row crow';
+      row.innerHTML='<span style="font-size:13px;">'+r.c+'</span>'
+        +'<span class="mono" style="text-align:right; font-size:13px; font-weight:500;">'+fmt(r.imp)+'</span>'
+        +'<span class="mono" style="text-align:right; font-size:13px; color:var(--slate);">'+r.ven+'</span>';
+      cont.appendChild(row);
+      setTimeout(function(){ row.classList.add('show'); }, idx*65);
+    });
+    document.getElementById('suma').textContent=fmt(suma);
+    var diff=Math.round(suma)-Math.round(total), cu=document.getElementById('cuadre');
+    if(diff===0){ cu.textContent='La suma de las cuotas coincide con el total de la factura.'; cu.style.color='#0F6E56'; }
+    else { cu.textContent='Diferencia detectada: '+fmt(diff)+' Gs'; cu.style.color='#A32D2D'; }
+  }
+
+  function setMod(cred){
+    esCredito=cred;
+    var co=document.getElementById('btn-co'),cr=document.getElementById('btn-cr'),pw=document.getElementById('plazo-wrap'),bg=document.getElementById('badge');
+    if(cred){ cr.classList.add('on'); co.classList.remove('on'); pw.style.opacity='1'; pw.style.pointerEvents='auto'; bg.textContent='CRÉDITO'; bg.style.background='#d0e1fb'; bg.style.color='#38485d'; }
+    else { co.classList.add('on'); cr.classList.remove('on'); pw.style.opacity='.4'; pw.style.pointerEvents='none'; bg.textContent='CONTADO'; bg.style.background='#c0dd97'; bg.style.color='#27500a'; }
+    calc();
+  }
+  document.getElementById('btn-co').onclick=function(){ setMod(false); };
+  document.getElementById('btn-cr').onclick=function(){ setMod(true); };
+  ['total','fecha','plazo'].forEach(function(id){ document.getElementById(id).addEventListener('input',calc); });
+  calc();
+})();
+</script>
+</body>
+</html>
