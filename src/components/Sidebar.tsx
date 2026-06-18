@@ -7,7 +7,10 @@ const ITEMS = [
   { href: "/", icon: "payments", label: "Nueva venta" },
   { href: "/ventas", icon: "receipt_long", label: "Ventas" },
   { href: "/clientes", icon: "group", label: "Clientes" },
+  { href: "/productos", icon: "inventory_2", label: "Productos" },
   { href: "/plazos", icon: "calendar_month", label: "Plazos" },
+  { href: "/depositos", icon: "warehouse", label: "Depositos" },
+  { href: "/empresa", icon: "storefront", label: "Empresa" },
 ];
 
 export default function Sidebar() {
