@@ -1,0 +1,67 @@
+# ============================================================================
+# GQG System - Modulo de Credito
+# - db      : MariaDB (carga sola db/*.sql en el primer arranque)
+# - adminer : UI web para inspeccionar la base (http://localhost:8081)
+# - app     : Next.js (opt-in: `docker compose --profile app up`)
+#             Copiar aca su proyecto Next (package.json + src/) antes de usarlo.
+# ============================================================================
+
+services:
+  db:
+    image: mariadb:11
+    container_name: gqg-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-root}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-gqg}
+      MARIADB_USER: ${MARIADB_USER:-gqg}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-gqg}
+    ports:
+      - "${DB_PORT:-3307}:3306"
+    volumes:
+      - gqg_db_data:/var/lib/mysql
+      # los .sql se ejecutan en orden (01_schema, 02_trigger, 03_pruebas)
+      # SOLO en el primer arranque (cuando el volumen esta vacio)
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  adminer:
+    image: adminer:4
+    container_name: gqg-adminer
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${ADMINER_PORT:-8081}:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+
+  app:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gqg-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${MARIADB_USER:-gqg}
+      DB_PASSWORD: ${MARIADB_PASSWORD:-gqg}
+      DB_NAME: ${MARIADB_DATABASE:-gqg}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-gqg2026}
+      AUTH_SECRET: ${AUTH_SECRET:-cambiar-secreto}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+
+volumes:
+  gqg_db_data:

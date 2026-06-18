@@ -1,0 +1,9 @@
+.env
+node_modules
+.next
+dist
+*.log
+
+# husky
+.husky/_
+next-env.d.ts

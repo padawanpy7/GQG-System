@@ -1,0 +1,13 @@
+# Override para el deploy en el server (expuesto via nginx).
+# Conecta la app a la red externa net-app para que nginx llegue a gqg-app:3000.
+# En las maquinas del equipo NO se usa este archivo (ahi no existe net-app):
+#   ellos corren  docker compose --profile app up
+services:
+  app:
+    networks:
+      - default
+      - net-app
+
+networks:
+  net-app:
+    external: true
