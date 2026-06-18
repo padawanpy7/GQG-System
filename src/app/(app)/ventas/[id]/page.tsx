@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { fechaCorta, cuotaLabel, gs } from "@/lib/format";
 
 type Cuota = { cuota: number; importe: number; cobrado: number; vence: string };
 type Linea = { producto: string; precio: number; cantidad: number; total: number };
@@ -18,8 +19,6 @@ type Detalle = {
   cuotas: Cuota[];
   lineas: Linea[];
 };
-
-const gs = (n: number) => Math.round(n).toLocaleString("es-PY");
 
 export default function CuentasCobrar({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -51,7 +50,7 @@ export default function CuentasCobrar({ params }: { params: Promise<{ id: string
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 13 }}>
             <Dato k="Cliente" v={d.cliente} />
             <Dato k="Documento" v={d.documentonro} />
-            <Dato k="Fecha" v={new Date(d.fechafactura).toLocaleDateString("es-PY")} />
+            <Dato k="Fecha" v={fechaCorta(d.fechafactura)} />
             <Dato k="Tipo / Plazo" v={`${d.tipo} · ${d.plazo}`} />
             <Dato k="Total" v={`${gs(d.totalfactura)} Gs`} mono />
           </div>
@@ -76,9 +75,9 @@ export default function CuentasCobrar({ params }: { params: Promise<{ id: string
           </div>
           {d.cuotas.map((c) => (
             <div key={c.cuota} style={{ display: "grid", gridTemplateColumns: "60px 1fr 1fr 1fr", fontFamily: "var(--font-mono)", fontSize: 13, padding: "10px 12px", borderBottom: "1px solid var(--color-line)" }}>
-              <span>{String(c.cuota).padStart(2, "0")}/{d.cuotas.length}</span>
+              <span>{cuotaLabel(c.cuota, d.cuotas.length)}</span>
               <span style={{ textAlign: "right" }}>{gs(c.importe)}</span>
-              <span style={{ textAlign: "right" }}>{new Date(c.vence).toLocaleDateString("es-PY")}</span>
+              <span style={{ textAlign: "right" }}>{fechaCorta(c.vence)}</span>
               <span style={{ textAlign: "right" }}>{gs(c.cobrado)}</span>
             </div>
           ))}

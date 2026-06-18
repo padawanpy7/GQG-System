@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { fechaCorta, cuotaLabel, gs } from "@/lib/format";
 
 type Cuota = { cuota: number; importe: number; cobrado: number; vence: string };
 type Linea = { producto: string; precio: number; cantidad: number; iva: number; total: number };
@@ -25,9 +26,6 @@ type Empresa = {
   ruc: string;
 };
 
-const gs = (n: number) => Math.round(n).toLocaleString("es-PY");
-const fecha = (s: string) => new Date(s).toLocaleDateString("es-PY");
-
 export default function FacturaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [d, setD] = useState<Detalle | null>(null);
@@ -49,9 +47,21 @@ export default function FacturaPage({ params }: { params: Promise<{ id: string }
   const totalIva = iva5 + iva10;
 
   const cred = d.tipo !== "Contado" && d.tipo !== "CO";
+  const cantItems = d.lineas.reduce((s, l) => s + Number(l.cantidad), 0);
+  const totalCuotas = d.cuotas.reduce((s, c) => s + Number(c.importe), 0);
 
   return (
     <div>
+      {/* impresion limpia: ocultar nav del sistema, conservar colores */}
+      <style>{`
+        @media print {
+          body { background: #fff; }
+          .no-print, aside, header { display: none !important; }
+          .factura-doc { border: none !important; box-shadow: none !important; margin: 0 !important; max-width: 100% !important; }
+          @page { size: A4; margin: 14mm; }
+        }
+        .factura-doc, .factura-doc * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      `}</style>
       <div className="no-print" style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         <Link href={`/ventas/${id}`} className="btn btn-ghost" style={{ textDecoration: "none" }}>
           ← Volver
@@ -63,6 +73,7 @@ export default function FacturaPage({ params }: { params: Promise<{ id: string }
 
       {/* comprobante */}
       <div
+        className="factura-doc"
         style={{
           maxWidth: 820,
           margin: "0 auto",
@@ -70,17 +81,30 @@ export default function FacturaPage({ params }: { params: Promise<{ id: string }
           border: "1px solid var(--color-line)",
           borderRadius: 6,
           padding: "28px 32px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
         }}
       >
         {/* cabecera */}
         <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid var(--color-ink)", paddingBottom: 14 }}>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{emp?.empresa || "GQG System"}</div>
-            <div style={{ fontSize: 12, color: "var(--color-slate)" }}>{emp?.direccion}</div>
-            <div style={{ fontSize: 12, color: "var(--color-slate)" }}>
-              Tel: {emp?.telefono} · {emp?.mail}
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <div
+              style={{
+                width: 40, height: 40, borderRadius: 8, flexShrink: 0,
+                background: "var(--color-ink)", color: "#fff",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 700, fontSize: 20,
+              }}
+            >
+              G
             </div>
-            <div style={{ fontSize: 12, color: "var(--color-slate)" }}>RUC: {emp?.ruc}</div>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>{emp?.empresa || "GQG System"}</div>
+              <div style={{ fontSize: 12, color: "var(--color-slate)" }}>{emp?.direccion}</div>
+              <div style={{ fontSize: 12, color: "var(--color-slate)" }}>
+                Tel: {emp?.telefono} · {emp?.mail}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--color-slate)" }}>RUC: {emp?.ruc}</div>
+            </div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>FACTURA</div>
@@ -98,7 +122,7 @@ export default function FacturaPage({ params }: { params: Promise<{ id: string }
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13, padding: "14px 0", borderBottom: "1px solid var(--color-line)" }}>
           <div><span style={{ color: "var(--color-slate)" }}>Cliente: </span><b>{d.cliente}</b></div>
           <div><span style={{ color: "var(--color-slate)" }}>RUC/CI: </span>{d.documentonro}</div>
-          <div><span style={{ color: "var(--color-slate)" }}>Fecha: </span>{fecha(d.fechafactura)}</div>
+          <div><span style={{ color: "var(--color-slate)" }}>Fecha: </span>{fechaCorta(d.fechafactura)}</div>
           <div><span style={{ color: "var(--color-slate)" }}>Plazo: </span>{d.plazo}</div>
         </div>
 
@@ -155,18 +179,39 @@ export default function FacturaPage({ params }: { params: Promise<{ id: string }
               <tbody>
                 {d.cuotas.map((c) => (
                   <tr key={c.cuota} style={{ borderBottom: "1px solid var(--color-line)", fontFamily: "var(--font-mono)" }}>
-                    <td style={{ padding: "7px 10px" }}>{String(c.cuota).padStart(2, "0")}/{d.cuotas.length}</td>
+                    <td style={{ padding: "7px 10px" }}>{cuotaLabel(c.cuota, d.cuotas.length)}</td>
                     <td style={{ padding: "7px 10px", textAlign: "right" }}>{gs(c.importe)}</td>
-                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fecha(c.vence)}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fechaCorta(c.vence)}</td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+                  <td style={{ padding: "7px 10px" }}>Total</td>
+                  <td style={{ padding: "7px 10px", textAlign: "right" }}>{gs(totalCuotas)}</td>
+                  <td />
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
 
+        {/* firma */}
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 40, marginTop: 48 }}>
+          <div style={{ flex: 1, textAlign: "center" }}>
+            <div style={{ borderTop: "1px solid var(--color-ink)", paddingTop: 6, fontSize: 12, color: "var(--color-slate)" }}>
+              Recibi conforme
+            </div>
+          </div>
+          <div style={{ flex: 1, textAlign: "center" }}>
+            <div style={{ borderTop: "1px solid var(--color-ink)", paddingTop: 6, fontSize: 12, color: "var(--color-slate)" }}>
+              {emp?.empresa || "GQG System"}
+            </div>
+          </div>
+        </div>
+
         <p style={{ fontSize: 11, color: "var(--color-slate)", marginTop: 24, textAlign: "center" }}>
-          Documento no fiscal — comprobante interno de GQG System.
+          {cantItems} item(s) · Documento no fiscal - comprobante interno de GQG System.
         </p>
       </div>
     </div>

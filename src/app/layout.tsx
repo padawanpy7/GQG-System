@@ -14,7 +14,7 @@ const jbmono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GQG System — Credito",
+  title: "GQG System - Credito",
   description: "Modulo de credito con vencimientos regulares e irregulares",
 };
 
