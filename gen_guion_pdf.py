@@ -12,7 +12,7 @@ import re
 from fpdf import FPDF
 
 SRC = os.path.join(os.path.dirname(__file__), "guia.md")
-OUT = os.path.join(os.path.dirname(__file__), "guia.pdf")
+OUT = os.path.join(os.path.dirname(__file__), "Guion-Defensa-Primer-Examen-Final.pdf")
 
 INK = (24, 34, 50)
 SLATE = (80, 95, 118)
