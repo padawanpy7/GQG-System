@@ -62,12 +62,12 @@ El modelo se organiza en catalogos, el nucleo de plazos, productos, ventas y cue
 
 Aplicacion web funcional, en espanol. Pantallas:
 - **Login** (autenticacion basica por sesion).
-- **Nueva venta:** selector de cliente, fecha, total, toggle CONTADO/CREDITO, selector de plazo (regular o irregular) y **vista previa en vivo** de las cuotas con su importe y vencimiento.
+- **Nueva venta:** selector de cliente, fecha, lineas de productos (el total se calcula de las lineas, no se tipea), toggle CONTADO/CREDITO, selector de plazo (regular o irregular) y **vista previa en vivo** de las cuotas con su importe y vencimiento.
 - **Ventas:** listado de comprobantes emitidos.
 - **Cuentas a cobrar:** detalle por venta con sus cuotas (cuota, importe, vence, cobrado).
 - **ABM de Clientes** (crear / editar / desactivar / reactivar).
 - **ABM de Productos** (crear / editar / desactivar / reactivar, con precio e IVA).
-- **ABM de Plazos**, **Depositos** y edicion de **Empresa**.
+- **ABM de Plazos** (alta + listado), **Depositos** y edicion de **Empresa**.
 - **Factura imprimible** (comprobante no fiscal con liquidacion de IVA y plan de cuotas).
 
 ### Controles para gestionar las modalidades de pago
@@ -76,7 +76,7 @@ Aplicacion web funcional, en espanol. Pantallas:
 - Preview de cuotas numeradas `01/03` (dos digitos) y fechas `DD/MM/AAAA`, con un indicador de que la suma "cuadra" con el total antes de confirmar.
 
 ### Funcionalidades implicitas (calidad)
-Validaciones (cliente, plazo y total obligatorios), control de secuencia (no genera la venta si faltan datos), baja logica en los ABM, diseno amigable y responsive (uso en tablet en el mostrador).
+Validaciones (cliente, plazo y al menos un producto obligatorios; el total surge de las lineas), control de secuencia (el boton CONFIRMAR VENTA esta deshabilitado hasta generar las cuotas), baja logica en los ABM de Clientes y Productos, campos numericos que filtran no-digitos y se revalidan en el backend, diseno amigable y responsive (uso en tablet en el mostrador).
 
 ---
 
