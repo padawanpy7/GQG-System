@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { fechaCorta, cuotaLabel } from "@/lib/format";
 
 type Cliente = { id: number; nombres: string; apellidos: string; documentonro: string };
 type Plazo = {
@@ -18,7 +19,7 @@ const hoyIso = () => new Date().toISOString().slice(0, 10);
 function masDias(iso: string, dias: number) {
   const d = new Date(iso + "T00:00:00");
   d.setDate(d.getDate() + dias);
-  return d.toLocaleDateString("es-PY");
+  return fechaCorta(d);
 }
 
 export default function NuevaVenta() {
@@ -176,7 +177,7 @@ export default function NuevaVenta() {
                   >
                     {plazosModo.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.plazo} — {p.irregular ? "irregular" : p.tipoid === 0 ? "contado" : "regular"} — {p.cuotas} cuota(s)
+                        {p.plazo} - {p.irregular ? "irregular" : p.tipoid === 0 ? "contado" : "regular"} - {p.cuotas} cuota(s)
                       </option>
                     ))}
                   </select>
@@ -244,7 +245,7 @@ export default function NuevaVenta() {
                     cuotas.map((c) => (
                       <tr key={c.n} className="transition-colors hover:bg-blue-50/30">
                         <td className="border-b border-outline-variant px-md py-md font-body-md text-body-md text-primary">
-                          {String(c.n).padStart(2, "0")}/{plazo?.cuotas}
+                          {cuotaLabel(c.n, plazo?.cuotas ?? 0)}
                         </td>
                         <td className="border-b border-outline-variant px-md py-md text-right font-tabular-num text-tabular-num text-primary">{gs(c.importe)}</td>
                         <td className="border-b border-outline-variant px-md py-md text-right font-tabular-num text-tabular-num text-secondary">{c.vence}</td>
@@ -293,7 +294,7 @@ export default function NuevaVenta() {
           </div>
           <div className="font-tabular-num text-headline-sm text-primary">{gs(total)} Gs</div>
           <p className="mt-sm font-body-sm text-body-sm text-secondary">
-            {credito ? `${plazo?.cuotas ?? 0} cuota(s) — ${plazo?.plazo ?? ""}` : "Contado — una cuota"}
+            {credito ? `${plazo?.cuotas ?? 0} cuota(s) - ${plazo?.plazo ?? ""}` : "Contado - una cuota"}
           </p>
         </div>
         <div className="rounded-lg border border-outline-variant bg-surface-container-low p-lg">
@@ -302,7 +303,7 @@ export default function NuevaVenta() {
             <span className="font-label-caps text-label-caps text-secondary">VENCIMIENTO FINAL</span>
           </div>
           <div className="font-tabular-num text-headline-sm text-primary">
-            {cuotas.length ? cuotas[cuotas.length - 1].vence : "—"}
+            {cuotas.length ? cuotas[cuotas.length - 1].vence : "-"}
           </div>
           <p className="mt-sm font-body-sm text-body-sm text-secondary">Ultima cuota a cobrar.</p>
         </div>

@@ -1,13 +1,49 @@
-import { NextResponse } from "next/server";
-import { q } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
+import { q, exec } from "@/lib/db";
 
 // Productos con su codigo de barra (PRODUCTO_DETALLE) para el detalle de la venta.
 export async function GET() {
   const filas = await q(
-    `SELECT pd.codbarra, p.id AS productoid, p.producto, p.iva
+    `SELECT pd.codbarra, p.id AS productoid, p.producto, p.iva, p.servicio
      FROM PRODUCTOS p
      JOIN PRODUCTO_DETALLE pd ON pd.productoid = p.id
      ORDER BY p.producto`,
   );
   return NextResponse.json(filas);
+}
+
+// Alta de producto: crea PRODUCTOS + su PRODUCTO_DETALLE (codigo de barra).
+export async function POST(req: NextRequest) {
+  const b = await req.json().catch(() => ({}));
+  const producto = String(b.producto || "").trim();
+  const codbarra = String(b.codbarra || "").trim();
+  const iva = Number(b.iva);
+  const servicio = Number(b.servicio) === 1 ? 1 : 0;
+
+  if (!producto) return NextResponse.json({ error: "Nombre del producto requerido" }, { status: 422 });
+  if (!codbarra) return NextResponse.json({ error: "Codigo de barra requerido" }, { status: 422 });
+  if (![0, 5, 10].includes(iva))
+    return NextResponse.json({ error: "IVA debe ser 0, 5 o 10" }, { status: 422 });
+
+  const [dup] = await q<{ codbarra: string }>(
+    "SELECT codbarra FROM PRODUCTO_DETALLE WHERE codbarra = ?",
+    [codbarra],
+  );
+  if (dup) return NextResponse.json({ error: "Ese codigo de barra ya existe" }, { status: 409 });
+
+  const [{ maxid }] = await q<{ maxid: number }>("SELECT IFNULL(MAX(id),0) AS maxid FROM PRODUCTOS");
+  const id = Number(maxid) + 1;
+  await exec("INSERT INTO PRODUCTOS (id, producto, iva, servicio) VALUES (?,?,?,?)", [
+    id,
+    producto,
+    iva,
+    servicio,
+  ]);
+  // colorid/tamanoid/disenoid son atributos de variante; el prototipo usa 1 por defecto.
+  await exec(
+    `INSERT INTO PRODUCTO_DETALLE (codbarra, productoid, colorid, tamanoid, disenoid, uxb)
+     VALUES (?,?,1,1,1,1)`,
+    [codbarra, id],
+  );
+  return NextResponse.json({ id, codbarra }, { status: 201 });
 }

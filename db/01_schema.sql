@@ -139,7 +139,8 @@ CREATE TABLE VENTA_DETALLES (
   impuesto10 DECIMAL(18,5) NOT NULL,
   total      DECIMAL(18,5) NOT NULL,
   CONSTRAINT pkvtadet PRIMARY KEY (ventaid, codbarra),
-  CONSTRAINT fkvtadetvta FOREIGN KEY (ventaid) REFERENCES VENTAS(id)
+  CONSTRAINT fkvtadetvta  FOREIGN KEY (ventaid)  REFERENCES VENTAS(id),
+  CONSTRAINT fkvtadetprod FOREIGN KEY (codbarra) REFERENCES PRODUCTO_DETALLE(codbarra)
 );
 
 -- ---- Cuentas a cobrar (lo que genera el trigger) ----------------------------
