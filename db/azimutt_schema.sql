@@ -1,7 +1,3 @@
--- GQG System - esquema para visualizar en Azimutt (azimutt.app)
--- Solo DDL (12 tablas + claves foraneas), sin comentarios inline ni datos.
--- Generado desde db/01_schema.sql.
-
 CREATE TABLE MONEDAS (
   id          INT NOT NULL,
   moneda      VARCHAR(50) NOT NULL,
@@ -68,6 +64,8 @@ CREATE TABLE PRODUCTOS (
   producto VARCHAR(200) NOT NULL,
   iva      DECIMAL(5,2) NOT NULL,
   servicio INT NOT NULL,
+  precio   DECIMAL(18,5) NOT NULL DEFAULT 0,
+  activo   SMALLINT NOT NULL DEFAULT 1,
   CONSTRAINT pkprod PRIMARY KEY (id)
 );
 CREATE TABLE PRODUCTO_DETALLE (

@@ -13,6 +13,9 @@ type Plazo = {
   irregular: number;
   detalles: { cuota: number; dias: number }[];
 };
+type Producto = { codbarra: string; producto: string; iva: number; precio: number };
+// Linea de la venta: producto elegido + cantidad. El precio sale del producto (editable).
+type Item = { codbarra: string; cantidad: number; precio: number };
 
 const gs = (n: number) => Math.round(n).toLocaleString("es-PY");
 const hoyIso = () => new Date().toISOString().slice(0, 10);
@@ -26,19 +29,39 @@ export default function NuevaVenta() {
   const router = useRouter();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [plazos, setPlazos] = useState<Plazo[]>([]);
+  const [productos, setProductos] = useState<Producto[]>([]);
 
   const [clienteid, setClienteid] = useState("");
   const [fecha, setFecha] = useState(hoyIso());
   const [credito, setCredito] = useState(true);
   const [plazoId, setPlazoId] = useState("");
-  const [totalStr, setTotalStr] = useState("");
+  const [items, setItems] = useState<Item[]>([{ codbarra: "", cantidad: 1, precio: 0 }]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [generado, setGenerado] = useState(false);
 
   useEffect(() => {
     void fetch("/api/clientes").then((r) => r.json()).then(setClientes);
     void fetch("/api/plazos").then((r) => r.json()).then(setPlazos);
+    void fetch("/api/productos").then((r) => r.json()).then(setProductos);
   }, []);
+
+  // --- Manejo de las lineas de productos ---
+  const prodDe = (codbarra: string) => productos.find((p) => p.codbarra === codbarra) || null;
+  function setItem(i: number, patch: Partial<Item>) {
+    setItems((xs) => xs.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
+  }
+  function elegirProducto(i: number, codbarra: string) {
+    const p = prodDe(codbarra);
+    // al elegir un producto, el precio se autocompleta con el del catalogo (editable)
+    setItem(i, { codbarra, precio: p ? p.precio : 0 });
+  }
+  function agregarItem() {
+    setItems((xs) => [...xs, { codbarra: "", cantidad: 1, precio: 0 }]);
+  }
+  function quitarItem(i: number) {
+    setItems((xs) => (xs.length > 1 ? xs.filter((_, idx) => idx !== i) : xs));
+  }
 
   const plazosModo = plazos.filter((p) => p.tipoid === (credito ? 1 : 0));
   useEffect(() => {
@@ -48,7 +71,14 @@ export default function NuevaVenta() {
   }, [credito, plazos]);
 
   const plazo = plazos.find((p) => String(p.id) === plazoId) || null;
-  const total = Number(totalStr) || 0;
+  // El total ya no se escribe a mano: sale de la suma de las lineas (precio x cantidad).
+  const lineasValidas = items.filter((it) => it.codbarra && it.cantidad > 0);
+  const total = lineasValidas.reduce((s, it) => s + it.precio * it.cantidad, 0);
+
+  // Cualquier cambio en los datos invalida la previsualizacion: hay que volver a generar.
+  useEffect(() => {
+    setGenerado(false);
+  }, [clienteid, fecha, credito, plazoId, items]);
 
   const cuotas = useMemo(() => {
     if (!plazo || total <= 0) return [] as { n: number; importe: number; vence: string }[];
@@ -70,13 +100,29 @@ export default function NuevaVenta() {
 
   const suma = cuotas.reduce((s, c) => s + c.importe, 0);
   const cuadra = cuotas.length > 0 && suma === Math.round(total);
+  const mostrar = generado && cuotas.length > 0;
 
-  async function generar() {
+  // Paso 1: valida y revela la previsualizacion de cuotas. NO guarda nada.
+  function previsualizar() {
     if (!clienteid) return setError("Elegi un cliente");
     if (!plazoId) return setError("Elegi un plazo");
-    if (total <= 0) return setError("Ingresa el total de la venta");
+    if (lineasValidas.length === 0) return setError("Agrega al menos un producto");
+    if (total <= 0) return setError("El total debe ser mayor a cero");
+    setError(null);
+    setGenerado(true);
+  }
+
+  // Paso 2: persiste la venta (el trigger genera las cuotas en la BD) y redirige.
+  async function confirmar() {
+    if (!generado) return;
     setBusy(true);
     setError(null);
+    const lineas = lineasValidas.map((it) => ({
+      codbarra: it.codbarra,
+      precio: it.precio,
+      cantidad: it.cantidad,
+      iva: prodDe(it.codbarra)?.iva ?? 0,
+    }));
     const r = await fetch("/api/ventas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -85,7 +131,7 @@ export default function NuevaVenta() {
         fechafactura: fecha,
         tipodocid: credito ? 2 : 1,
         plazoid: Number(plazoId),
-        total,
+        lineas,
       }),
     });
     if (r.ok) {
@@ -125,24 +171,9 @@ export default function NuevaVenta() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-md">
-                <div className="flex flex-col gap-xs">
-                  <label className="font-label-caps text-label-caps text-secondary">FECHA</label>
-                  <input type="date" className={inputCls} value={fecha} onChange={(e) => setFecha(e.target.value)} />
-                </div>
-                <div className="flex flex-col gap-xs text-right">
-                  <label className="font-label-caps text-label-caps text-secondary">TOTAL</label>
-                  <div className="relative">
-                    <span className="absolute left-md top-1/2 -translate-y-1/2 font-label-caps text-label-caps text-secondary">Gs</span>
-                    <input
-                      className={`${inputCls} pl-9 text-right font-tabular-num text-tabular-num`}
-                      inputMode="numeric"
-                      placeholder="0"
-                      value={totalStr ? Number(totalStr).toLocaleString("es-PY") : ""}
-                      onChange={(e) => setTotalStr(e.target.value.replace(/\D/g, ""))}
-                    />
-                  </div>
-                </div>
+              <div className="flex flex-col gap-xs">
+                <label className="font-label-caps text-label-caps text-secondary">FECHA</label>
+                <input type="date" className={inputCls} value={fecha} onChange={(e) => setFecha(e.target.value)} />
               </div>
 
               <div className="flex flex-col gap-xs pt-sm">
@@ -186,23 +217,98 @@ export default function NuevaVenta() {
                   </span>
                 </div>
               </div>
+
+              {/* -------- Productos de la venta -------- */}
+              <div className="flex flex-col gap-xs pt-sm">
+                <div className="flex items-center justify-between">
+                  <label className="font-label-caps text-label-caps text-secondary">PRODUCTOS</label>
+                  <button
+                    type="button"
+                    onClick={agregarItem}
+                    className="flex items-center gap-1 font-label-caps text-label-caps text-secondary transition-colors hover:text-primary"
+                  >
+                    <span className="material-symbols-outlined text-base">add</span> AGREGAR
+                  </button>
+                </div>
+
+                <div className="overflow-hidden rounded border border-outline-variant">
+                  <div className="grid grid-cols-[1fr_92px_56px_104px_36px] items-center gap-xs bg-surface-container px-md py-xs font-label-caps text-label-caps text-secondary">
+                    <span>PRODUCTO</span>
+                    <span className="text-right">PRECIO</span>
+                    <span className="text-right">CANT</span>
+                    <span className="text-right">SUBTOTAL</span>
+                    <span />
+                  </div>
+                  {items.map((it, i) => {
+                    const sub = it.precio * it.cantidad;
+                    return (
+                      <div
+                        key={i}
+                        className="grid grid-cols-[1fr_92px_56px_104px_36px] items-center gap-xs border-t border-outline-variant px-md py-xs"
+                      >
+                        <select
+                          className="h-9 w-full rounded border border-outline-variant bg-transparent px-2 font-body-sm text-body-sm text-primary outline-none focus:border-primary"
+                          value={it.codbarra}
+                          onChange={(e) => elegirProducto(i, e.target.value)}
+                        >
+                          <option value="">Elegir...</option>
+                          {productos.map((p) => (
+                            <option key={p.codbarra} value={p.codbarra}>
+                              {p.producto}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          className="h-9 w-full rounded border border-outline-variant bg-transparent px-2 text-right font-tabular-num text-tabular-num text-primary outline-none focus:border-primary"
+                          inputMode="numeric"
+                          value={it.precio ? it.precio.toLocaleString("es-PY") : ""}
+                          onChange={(e) => setItem(i, { precio: Number(e.target.value.replace(/\D/g, "")) || 0 })}
+                        />
+                        <input
+                          className="h-9 w-full rounded border border-outline-variant bg-transparent px-2 text-right font-tabular-num text-tabular-num text-primary outline-none focus:border-primary"
+                          inputMode="numeric"
+                          value={it.cantidad || ""}
+                          onChange={(e) => setItem(i, { cantidad: Number(e.target.value.replace(/\D/g, "")) || 0 })}
+                        />
+                        <span className="text-right font-tabular-num text-tabular-num text-primary">{gs(sub)}</span>
+                        <button
+                          type="button"
+                          onClick={() => quitarItem(i)}
+                          disabled={items.length === 1}
+                          className="flex items-center justify-center text-secondary transition-colors hover:text-error disabled:opacity-30"
+                          aria-label="Quitar producto"
+                        >
+                          <span className="material-symbols-outlined text-base">close</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                  <div className="grid grid-cols-[1fr_92px_56px_104px_36px] items-center gap-xs border-t border-outline-variant bg-surface-bright px-md py-sm">
+                    <span className="font-label-caps text-label-caps text-secondary">TOTAL</span>
+                    <span />
+                    <span />
+                    <span className="text-right font-tabular-num text-tabular-num font-bold text-primary">{gs(total)}</span>
+                    <span />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {error && <p className="mt-md font-body-sm text-body-sm text-error">{error}</p>}
 
             <div className="mt-xl flex justify-end gap-md border-t border-outline-variant pt-lg">
               <button
-                onClick={() => { setTotalStr(""); setClienteid(""); setError(null); }}
+                onClick={() => { setItems([{ codbarra: "", cantidad: 1, precio: 0 }]); setClienteid(""); setError(null); setGenerado(false); }}
                 className="h-10 rounded border border-outline-variant px-xl font-label-caps text-label-caps text-primary transition-colors hover:bg-surface-container"
               >
                 DESCARTAR
               </button>
               <button
-                onClick={generar}
+                onClick={previsualizar}
                 disabled={busy || total <= 0}
                 className="h-10 rounded bg-primary px-xl font-label-caps text-label-caps font-bold text-on-primary transition-colors hover:bg-primary-container disabled:opacity-50"
               >
-                {busy ? "GENERANDO..." : "GENERAR CUOTAS"}
+                {generado ? "CUOTAS GENERADAS" : "GENERAR CUOTAS"}
               </button>
             </div>
           </section>
@@ -235,10 +341,12 @@ export default function NuevaVenta() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cuotas.length === 0 ? (
+                  {!mostrar ? (
                     <tr>
                       <td colSpan={3} className="px-md py-lg font-body-sm text-body-sm text-secondary">
-                        Cargá el total para ver las cuotas.
+                        {total > 0 && plazo
+                          ? "Presioná «Generar cuotas» para previsualizar."
+                          : "Cargá el total para ver las cuotas."}
                       </td>
                     </tr>
                   ) : (
@@ -253,7 +361,7 @@ export default function NuevaVenta() {
                     ))
                   )}
                 </tbody>
-                {cuotas.length > 0 && (
+                {mostrar && (
                   <tfoot>
                     <tr className="bg-surface-bright">
                       <td className="px-md py-md font-body-md text-body-md font-bold text-primary">Total</td>
@@ -266,7 +374,7 @@ export default function NuevaVenta() {
             </div>
 
             <div className="mt-auto p-lg">
-              {cuotas.length > 0 && (
+              {mostrar && (
                 <p className="text-center font-body-sm text-body-sm italic text-secondary">
                   {cuadra
                     ? "Cuotas calculadas por el trigger; la suma coincide con el total."
@@ -274,11 +382,11 @@ export default function NuevaVenta() {
                 </p>
               )}
               <button
-                onClick={generar}
-                disabled={busy || total <= 0}
+                onClick={confirmar}
+                disabled={busy || !generado}
                 className="mt-lg w-full rounded bg-primary py-md font-headline-sm text-headline-sm font-bold text-on-primary shadow-sm transition-all active:opacity-90 disabled:opacity-50"
               >
-                CONFIRMAR VENTA
+                {busy ? "CONFIRMANDO..." : "CONFIRMAR VENTA"}
               </button>
             </div>
           </section>

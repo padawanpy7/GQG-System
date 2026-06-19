@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { q, exec } from "@/lib/db";
 
-export async function GET() {
+// Por defecto solo activos; con ?inactivos=1 devuelve todos (para el ABM).
+export async function GET(req: NextRequest) {
+  const todos = req.nextUrl.searchParams.get("inactivos") === "1";
   const cli = await q(
-    `SELECT id, nombres, apellidos, documentonro, direccion, email, telefono
-     FROM CLIENTES WHERE activo = 1 ORDER BY nombres, apellidos`,
+    `SELECT id, nombres, apellidos, documentonro, direccion, email, telefono, activo
+     FROM CLIENTES ${todos ? "" : "WHERE activo = 1"}
+     ORDER BY activo DESC, nombres, apellidos`,
   );
   return NextResponse.json(cli);
 }

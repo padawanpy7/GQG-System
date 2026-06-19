@@ -21,8 +21,11 @@ services:
     volumes:
       - gqg_db_data:/var/lib/mysql
       # los .sql se ejecutan en orden (01_schema, 02_trigger, 03_pruebas)
-      # SOLO en el primer arranque (cuando el volumen esta vacio)
-      - ./db:/docker-entrypoint-initdb.d:ro
+      # SOLO en el primer arranque (cuando el volumen esta vacio).
+      # Se montan explicitos: azimutt_schema.sql es solo para Azimutt (no se ejecuta).
+      - ./db/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./db/02_trigger.sql:/docker-entrypoint-initdb.d/02_trigger.sql:ro
+      - ./db/03_pruebas.sql:/docker-entrypoint-initdb.d/03_pruebas.sql:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
