@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ConfirmDialog from "@/components/ConfirmDialog";
+
+type Confirmacion = {
+  title: string;
+  message: string;
+  label: string;
+  icon: string;
+  danger: boolean;
+  run: () => Promise<void>;
+};
 
 type Cliente = {
   id: number;
@@ -28,6 +38,8 @@ export default function ClientesPage() {
   const [editId, setEditId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmacion, setConfirmacion] = useState<Confirmacion | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   function cargar() {
     void fetch("/api/clientes?inactivos=1").then((r) => r.json()).then(setClientes);
@@ -76,25 +88,50 @@ export default function ClientesPage() {
     setBusy(false);
   }
 
-  async function desactivar(c: Cliente) {
-    if (!confirm(`Desactivar a ${c.nombres} ${c.apellidos}? No aparecera en nuevas ventas.`)) return;
-    const r = await fetch(`/api/clientes/${c.id}`, { method: "DELETE" });
-    if (r.ok) {
-      if (editId === c.id) cancelar();
-      cargar();
-    } else {
-      const d = await r.json().catch(() => ({}));
-      setError(d.error || "No se pudo desactivar el cliente");
-    }
+  function pedirDesactivar(c: Cliente) {
+    setConfirmacion({
+      title: "Desactivar cliente",
+      message: `${c.nombres} ${c.apellidos} no aparecera en nuevas ventas. Podes reactivarlo despues.`,
+      label: "Desactivar",
+      icon: "block",
+      danger: true,
+      run: async () => {
+        const r = await fetch(`/api/clientes/${c.id}`, { method: "DELETE" });
+        if (r.ok) {
+          if (editId === c.id) cancelar();
+          cargar();
+        } else {
+          const d = await r.json().catch(() => ({}));
+          setError(d.error || "No se pudo desactivar el cliente");
+        }
+      },
+    });
   }
 
-  async function reactivar(c: Cliente) {
-    const r = await fetch(`/api/clientes/${c.id}`, { method: "PATCH" });
-    if (r.ok) cargar();
-    else {
-      const d = await r.json().catch(() => ({}));
-      setError(d.error || "No se pudo reactivar el cliente");
-    }
+  function pedirReactivar(c: Cliente) {
+    setConfirmacion({
+      title: "Reactivar cliente",
+      message: `${c.nombres} ${c.apellidos} volvera a estar disponible en las ventas.`,
+      label: "Reactivar",
+      icon: "check_circle",
+      danger: false,
+      run: async () => {
+        const r = await fetch(`/api/clientes/${c.id}`, { method: "PATCH" });
+        if (r.ok) cargar();
+        else {
+          const d = await r.json().catch(() => ({}));
+          setError(d.error || "No se pudo reactivar el cliente");
+        }
+      },
+    });
+  }
+
+  async function ejecutarConfirmacion() {
+    if (!confirmacion) return;
+    setConfirmBusy(true);
+    await confirmacion.run();
+    setConfirmBusy(false);
+    setConfirmacion(null);
   }
 
   const inputCls =
@@ -156,11 +193,11 @@ export default function ClientesPage() {
                           <div className="flex justify-end gap-xs">
                             {inactivo ? (
                               <button
-                                onClick={() => reactivar(c)}
-                                title="Reactivar"
-                                className="flex items-center justify-center rounded p-1 text-secondary transition-colors hover:bg-tertiary-container hover:text-primary"
+                                onClick={() => pedirReactivar(c)}
+                                title="Activar"
+                                className="flex items-center justify-center rounded p-1 text-secondary transition-colors hover:bg-surface-container-high hover:text-ok"
                               >
-                                <span className="material-symbols-outlined text-base">restart_alt</span>
+                                <span className="material-symbols-outlined text-base">check_circle</span>
                               </button>
                             ) : (
                               <>
@@ -172,11 +209,11 @@ export default function ClientesPage() {
                                   <span className="material-symbols-outlined text-base">edit</span>
                                 </button>
                                 <button
-                                  onClick={() => desactivar(c)}
+                                  onClick={() => pedirDesactivar(c)}
                                   title="Desactivar"
-                                  className="flex items-center justify-center rounded p-1 text-secondary transition-colors hover:bg-error-container hover:text-error"
+                                  className="flex items-center justify-center rounded p-1 text-secondary transition-colors hover:bg-surface-container-high hover:text-error"
                                 >
-                                  <span className="material-symbols-outlined text-base">person_off</span>
+                                  <span className="material-symbols-outlined text-base">block</span>
                                 </button>
                               </>
                             )}
@@ -235,6 +272,18 @@ export default function ClientesPage() {
           </section>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmacion !== null}
+        title={confirmacion?.title ?? ""}
+        message={confirmacion?.message}
+        icon={confirmacion?.icon}
+        confirmLabel={confirmacion?.label}
+        danger={confirmacion?.danger}
+        busy={confirmBusy}
+        onConfirm={ejecutarConfirmacion}
+        onClose={() => setConfirmacion(null)}
+      />
     </div>
   );
 }
