@@ -46,6 +46,19 @@ export async function POST(req: NextRequest) {
     lineas = [{ codbarra: prod.codbarra, precio: totalDirecto, cantidad: 1, iva: prod.iva }];
   }
 
+  // Agrupa por codbarra (la PK de VENTA_DETALLES es (ventaid, codbarra)):
+  // si un producto se repite, se suman las cantidades en una sola fila.
+  const porCod = new Map<string, Linea>();
+  for (const l of lineas) {
+    if (!l.codbarra || Number(l.cantidad) <= 0) continue;
+    const prev = porCod.get(l.codbarra);
+    if (prev) prev.cantidad = Number(prev.cantidad) + Number(l.cantidad);
+    else porCod.set(l.codbarra, { ...l, cantidad: Number(l.cantidad) });
+  }
+  lineas = [...porCod.values()];
+  if (lineas.length === 0)
+    return NextResponse.json({ error: "Agrega al menos un producto" }, { status: 422 });
+
   const total = lineas.reduce(
     (s, l) => s + Number(l.precio || 0) * Number(l.cantidad || 0),
     0,

@@ -88,6 +88,8 @@ CREATE TABLE PRODUCTOS (
   producto VARCHAR(200) NOT NULL,
   iva      DECIMAL(5,2) NOT NULL,          -- 0 / 5 / 10
   servicio INT NOT NULL,                   -- 0=mercaderia, 1=servicio
+  precio   DECIMAL(18,5) NOT NULL DEFAULT 0, -- precio de venta unitario (IVA incluido)
+  activo   SMALLINT NOT NULL DEFAULT 1,    -- baja logica (0=desactivado)
   CONSTRAINT pkprod PRIMARY KEY (id)
 );
 
@@ -192,12 +194,12 @@ INSERT INTO PLAZO_DETALLES (id, plazoid, cuota, dias) VALUES
   (2, 3, 2, 45),
   (3, 3, 3, 60);
 
--- Productos de ejemplo (del Modelo Factura)
-INSERT INTO PRODUCTOS (id, producto, iva, servicio) VALUES
-  (1, 'Producto 1 x Unid', 5,  0),
-  (2, 'Producto 2 x Unid', 0,  0),
-  (3, 'Producto 3 x Unid', 10, 0),
-  (4, 'Producto 4 x Unid', 10, 0);
+-- Productos de ejemplo (del Modelo Factura), ahora con precio de venta unitario
+INSERT INTO PRODUCTOS (id, producto, iva, servicio, precio) VALUES
+  (1, 'Producto 1 x Unid', 5,  0, 150000),
+  (2, 'Producto 2 x Unid', 0,  0,  80000),
+  (3, 'Producto 3 x Unid', 10, 0, 200000),
+  (4, 'Producto 4 x Unid', 10, 0, 120000);
 
 INSERT INTO PRODUCTO_DETALLE (codbarra, productoid, colorid, tamanoid, disenoid, uxb) VALUES
   ('7841617000662', 1, 1, 1, 1, 1),
